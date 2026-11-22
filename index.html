@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>자연의 소리 스튜디오 | 매장용 무한 비반복 앰비언트 믹서</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- 상단 고정 마스터 헤더 -->
+  <header class="top-header">
+    <div class="header-inner">
+      <div class="brand-area">
+        <div class="brand-logo">🌿</div>
+        <div class="brand-title">
+          <h1>
+            자연의 소리 믹서 스튜디오
+            <span class="store-badge" id="wakeLockBadge">매장 무한재생 모드 ON</span>
+          </h1>
+          <p>볼륨만 올리면 즉시 조합 · 비주기적 자연 변화 엔진으로 하루 종일 틀어도 단조롭지 않은 사운드스케이프</p>
+        </div>
+      </div>
+
+      <div class="master-controls">
+        <div class="visualizer-box" title="실시간 주파수 스펙트럼">
+          <canvas id="spectrumCanvas" width="150" height="38"></canvas>
+        </div>
+
+        <div class="control-group" title="소리가 기계적으로 반복되지 않도록 바람·볼륨·공간감이 스스로 숨쉬듯 변하는 정도를 조절합니다.">
+          <label for="driftSlider">🌊 유기적 자연 변화</label>
+          <input type="range" id="driftSlider" min="0" max="100" value="75" style="width: 85px;" />
+          <span class="val-badge" id="driftValText">75%</span>
+        </div>
+
+        <div class="control-group">
+          <label for="masterVolSlider">🔊 마스터 볼륨</label>
+          <input type="range" id="masterVolSlider" min="0" max="100" value="80" style="width: 95px;" />
+          <span class="val-badge" id="masterVolText">80%</span>
+        </div>
+
+        <button class="btn" id="btnMuteAll" title="일시 음소거">🔈 음소거</button>
+        <button class="btn" id="btnRandomMix" title="자연스러운 추천 조합을 랜덤으로 생성합니다">🎲 자연 랜덤 조합</button>
+        <button class="btn btn-danger" id="btnResetMix" title="모든 소리 볼륨을 0으로 초기화합니다">⏹ 모두 끄기</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 -->
+  <main class="main-container">
+
+    <!-- 1. 매장 추천 프리셋 & 내 조합 저장 섹션 -->
+    <section class="presets-section">
+      <div class="presets-header">
+        <h2>✨ 매장 테마 프리셋 (클릭 시 즉시 조합 적용)</h2>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" id="btnSavePreset">💾 현재 볼륨 조합 저장</button>
+          <button class="btn" id="btnOpenGlobalAdd">➕ 새 소리 추가</button>
+        </div>
+      </div>
+      <div class="presets-list" id="presetsList">
+        <!-- JS에서 렌더링 -->
+      </div>
+    </section>
+
+    <!-- 2. 현재 켜져 있는 소리 한눈에 보기 바 -->
+    <section class="active-mix-bar" id="activeMixBar">
+      <div class="active-mix-tags" id="activeMixTags">
+        <span style="font-size:0.83rem; color:#94a3b8;">💡 아래 카테고리에서 원하는 소리의 <strong>볼륨 슬라이더</strong>를 올리면 즉시 조합이 시작됩니다. (예: 새 소리에서 뻐꾸기 + 소쩍새 동시 볼륨 업)</span>
+      </div>
+      <div style="font-size:0.78rem; color:#6ee7b7; font-weight:600;" id="activeCountLabel">
+        현재 재생 중: 0개
+      </div>
+    </section>
+
+    <!-- 3. 카테고리 탭 및 검색 -->
+    <div class="filter-bar">
+      <div class="category-tabs" id="categoryTabs">
+        <!-- JS에서 렌더링 -->
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="소리 검색 (예: 뻐꾸기, 소쩍새, 시장, 비, 432Hz...)" />
+      </div>
+    </div>
+
+    <!-- 4. 카테고리별 사운드 그리드 컨테이너 -->
+    <div id="categoriesContainer">
+      <!-- JS에서 렌더링 -->
+    </div>
+
+  </main>
+
+  <!-- 모달: 카테고리에 새로운 소리 추가 -->
+  <div class="modal-backdrop" id="addSoundModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle">➕ 카테고리에 새로운 소리 추가</h3>
+        <button class="btn" id="btnCloseModal">✕ 닫기</button>
+      </div>
+
+      <div class="modal-tabs">
+        <div class="modal-tab active" data-tab="tab-library">📦 확장 사운드 보관함</div>
+        <div class="modal-tab" data-tab="tab-file">🌐 무료 음원 URL / 내 파일(MP3·WAV)</div>
+        <div class="modal-tab" data-tab="tab-synth">🎛️ 커스텀 주파수·합성음 만들기</div>
+      </div>
+
+      <!-- 탭 1: 확장 사운드 보관함 -->
+      <div id="tab-library" class="modal-tab-content">
+        <div class="modal-toolbar">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <label for="modalCatFilter" style="font-size:0.8rem; color:#cbd5e1; font-weight:600;">카테고리 보기:</label>
+            <select id="modalCatFilter" style="padding:6px 10px; border-radius:8px; background:rgba(0,0,0,0.45); color:#fff; border:1px solid rgba(255,255,255,0.15); font-size:0.82rem;">
+              <!-- JS에서 렌더링 -->
+            </select>
+            <label style="font-size:0.78rem; color:#94a3b8; display:inline-flex; align-items:center; gap:5px; cursor:pointer; margin-left:6px;">
+              <input type="checkbox" id="chkAutoPlayOnAdd" />
+              추가 시 즉시 볼륨 켜기(50%)
+            </label>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btnAddAllVisible" style="padding:6px 11px; font-size:0.78rem;">➕ 현재 목록 모두 추가</button>
+            <button class="btn btn-danger" id="btnRemoveAllVisible" style="padding:6px 11px; font-size:0.78rem;">✕ 현재 목록 모두 제외</button>
+            <button class="btn" id="btnRestoreDefaults" style="padding:6px 11px; font-size:0.78rem;" title="메인 화면에서 제외했던 기본 사운드들을 다시 복원합니다">🔄 기본 사운드 복원</button>
+          </div>
+        </div>
+
+        <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;" id="modalCategoryNotice">
+          💡 <strong>[＋ 추가]</strong>를 누르면 해당 카테고리에 카드가 생성되고, <strong>[✕ 제외]</strong>를 누르면 카테고리에서 즉시 제거됩니다.
+        </p>
+        <div class="expansion-list" id="expansionListContainer">
+          <!-- JS에서 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 탭 2: 외부 무료 스트리밍 URL 또는 로컬 오디오 파일 -->
+      <div id="tab-file" class="modal-tab-content" style="display:none;">
+        <div class="form-group">
+          <label>추가할 카테고리 선택</label>
+          <select id="customFileCategory"></select>
+        </div>
+        <div class="form-group">
+          <label>소리 이름 (예: 산속 뻐꾸기 녹음본, 매장 전용 종소리)</label>
+          <input type="text" id="customFileName" placeholder="소리 이름을 입력하세요" />
+        </div>
+        <div class="form-group">
+          <label>설명 (선택)</label>
+          <input type="text" id="customFileDesc" placeholder="예: 직접 추가한 자연 음원" />
+        </div>
+        <div class="form-group">
+          <label>방법 A: 내 컴퓨터에서 오디오 파일(MP3, WAV, OGG) 선택</label>
+          <input type="file" id="customFileInput" accept="audio/*" />
+        </div>
+        <div class="form-group">
+          <label>방법 B: 또는 무료 온라인 오디오 스트리밍 주소(URL) 입력</label>
+          <input type="url" id="customStreamUrl" placeholder="https://example.com/nature-sound.mp3" />
+        </div>
+        <button class="btn btn-primary" id="btnSubmitFileSound" style="width:100%; justify-content:center; padding:12px;">
+          ➕ 이 소리를 카테고리에 추가하고 바로 켜기
+        </button>
+      </div>
+
+      <!-- 탭 3: 커스텀 합성 사운드 / 공명 주파수 생성 -->
+      <div id="tab-synth" class="modal-tab-content" style="display:none;">
+        <div class="form-group">
+          <label>추가할 카테고리 선택</label>
+          <select id="customSynthCategory"></select>
+        </div>
+        <div class="form-group">
+          <label>소리 이름 (예: 깊은 산 소쩍새 저음, 639Hz 솔페지오 공명)</label>
+          <input type="text" id="customSynthName" placeholder="예: 나만의 산새 소리 / 639Hz 주파수" />
+        </div>
+        <div class="form-group">
+          <label>기반 실제 녹음 음원 / 주파수 선택</label>
+          <select id="customSynthBase">
+            <option value="real:audio/bird_cuckoo.mp3:episodic">🐦 실제 뻐꾸기 녹음본 (음높이/거리 변형)</option>
+            <option value="real:audio/bird_scops_owl.mp3:episodic">🦉 실제 소쩍새 녹음본 (음높이/거리 변형)</option>
+            <option value="real:audio/bird_nightingale.mp3:continuous">🎵 실제 밤꾀꼬리 녹음본 (음높이 변형)</option>
+            <option value="real:audio/underwater_river.mp3:continuous">🤿 실제 깊은 물속(수중) 녹음본 (수심 깊이 변형)</option>
+            <option value="real:audio/underwater_bubbles.ogg:continuous">🫧 실제 물속 공기방울 녹음본 (기포 크기 변형)</option>
+            <option value="real:audio/weather_brook.wav:continuous">🏞️ 실제 시냇물 녹음본 (물줄기 굵기 변형)</option>
+            <option value="real:audio/place_windchime.ogg:episodic">🎐 실제 코시 풍경 종소리 녹음본 (음역 변형)</option>
+            <option value="real:audio/res_singing_bowl2.wav:episodic">🥣 실제 티베트 싱잉볼 녹음본 (울림 깊이 변형)</option>
+            <option value="synth:res_432hz">✨ 순수 주파수 패드 (432Hz 기준 배율)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>음높이(Pitch) / 주파수 배율 조절: <span id="pitchScaleLabel">1.00x (기본)</span></label>
+          <input type="range" id="customSynthPitch" min="50" max="180" value="100" />
+        </div>
+        <button class="btn btn-primary" id="btnSubmitSynthSound" style="width:100%; justify-content:center; padding:12px;">
+          ➕ 커스텀 합성 소리 추가하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds-data.js"></script>
+  <script src="audio-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
